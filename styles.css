@@ -63,7 +63,6 @@ button {
   right: 10px;
   z-index: 20;
   pointer-events: none;
-  filter: drop-shadow(0 5px 0 rgba(0, 0, 0, 0.3));
 }
 
 .hud-row {
@@ -161,7 +160,6 @@ button {
 
 .danger-meter.warning {
   background: linear-gradient(180deg, #65301c, #2b1714);
-  animation: dangerPulse 650ms ease-in-out infinite alternate;
 }
 
 .danger-label {
@@ -193,15 +191,6 @@ button {
   background:
     linear-gradient(90deg, transparent 42%, rgba(10, 15, 31, 0.22) 42% 57%, transparent 57%),
     linear-gradient(180deg, #ff6b47, #b71924);
-}
-
-@keyframes dangerPulse {
-  from {
-    filter: brightness(1);
-  }
-  to {
-    filter: brightness(1.28);
-  }
 }
 
 .screen {
@@ -404,7 +393,6 @@ h2 {
   box-shadow: 4px 4px 0 rgba(10, 15, 31, 0.65);
   pointer-events: none;
   transform: translateY(-50%);
-  transition: top 120ms linear;
 }
 
 .height-side-badge strong {
