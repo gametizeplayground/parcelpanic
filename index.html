@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#111827" />
+    <title>Parcel Panic</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main id="game-shell" aria-label="Parcel Panic game">
+      <div id="game-container"></div>
+
+      <section id="hud" class="hud hidden" aria-live="polite">
+        <div class="hud-row">
+          <div class="hud-chip hud-chip-timer">
+            <span class="hud-label">Shift</span>
+            <span id="timer-text" class="hud-value">60</span>
+          </div>
+          <div class="hud-chip">
+            <span class="hud-label">Score</span>
+            <span id="score-text" class="hud-value">0</span>
+          </div>
+          <div class="hud-chip hud-chip-combo">
+            <span class="hud-label">Combo</span>
+            <span id="combo-text" class="hud-value">x1</span>
+          </div>
+        </div>
+        <div class="height-wrap">
+          <span class="height-label">Stack Height</span>
+          <div class="height-bar">
+            <div id="height-fill" class="height-fill"></div>
+          </div>
+          <span id="height-text" class="height-value">0</span>
+        </div>
+        <div id="danger-meter" class="danger-meter">
+          <span id="danger-label" class="danger-label">Dropped Parcels 0/4</span>
+          <div id="danger-slots" class="danger-slots" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      </section>
+
+      <section id="start-screen" class="screen screen-start">
+        <div class="logo-lockup" aria-label="Parcel Panic">
+          <span class="logo-small">Gametize Mini Game</span>
+          <h1>Parcel Panic</h1>
+          <p>Tap. Stack. Survive the chaos.</p>
+        </div>
+        <div class="menu-actions">
+          <button id="start-button" class="comic-button primary" type="button">Start Shift</button>
+          <button id="leaderboard-button" class="comic-button secondary" type="button">Leaderboard</button>
+        </div>
+        <div class="quick-rules">
+          <span>60 sec rush</span>
+          <span>Perfect drops combo</span>
+          <span>Golden boxes score big</span>
+        </div>
+      </section>
+
+      <section id="game-over-screen" class="screen screen-gameover hidden">
+        <div class="gameover-panel">
+          <span id="game-over-kicker" class="logo-small">Shift Complete</span>
+          <h2 id="game-over-title">Nice Loading!</h2>
+          <p id="game-over-reason" class="game-over-reason">Shift complete. Nice stacking.</p>
+          <div class="result-grid">
+            <div>
+              <span>Score</span>
+              <strong id="final-score">0</strong>
+            </div>
+            <div>
+              <span>Height</span>
+              <strong id="final-height">0</strong>
+            </div>
+            <div>
+              <span>Best Combo</span>
+              <strong id="final-combo">x1</strong>
+            </div>
+            <div>
+              <span>Perfect</span>
+              <strong id="final-perfects">0</strong>
+            </div>
+          </div>
+          <div class="menu-actions compact">
+            <button id="replay-button" class="comic-button primary" type="button">Replay</button>
+            <button id="share-button" class="comic-button secondary" type="button">Share</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="leaderboard-screen" class="screen screen-leaderboard hidden">
+        <div class="gameover-panel">
+          <span class="logo-small">Warehouse Rankings</span>
+          <h2>Leaderboard</h2>
+          <ol id="leaderboard-list" class="leaderboard-list"></ol>
+          <button id="close-leaderboard-button" class="comic-button secondary" type="button">Back</button>
+        </div>
+      </section>
+
+      <div id="tap-hint" class="tap-hint hidden">Tap to drop parcel</div>
+      <div id="combo-toast" class="combo-toast hidden">Smooth Loader!</div>
+      <div id="danger-toast" class="danger-toast hidden">Parcel Lost!</div>
+      <div id="height-side-badge" class="height-side-badge hidden">
+        <strong id="height-side-value">0</strong>
+        <span>high</span>
+      </div>
+      <button id="sound-button" class="sound-button" type="button" aria-label="Toggle sound">SFX</button>
+      <div class="rotate-notice">Rotate to portrait to load parcels.</div>
+    </main>
+
+    <script src="./vendor/phaser.min.js"></script>
+    <script src="./src/main.js"></script>
+  </body>
+</html>
