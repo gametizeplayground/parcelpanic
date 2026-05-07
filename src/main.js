@@ -9,6 +9,10 @@
     platformWidthRatio: 0.82,
     alignmentAssistRange: 34,
     alignmentAssistStrength: 0.35,
+    maxActiveParcels: 42,
+    hudUpdateMs: 100,
+    stackUpdateMs: 120,
+    cleanupMs: 600,
     leaderboardKey: "parcel-panic-leaderboard",
     highScoreKey: "parcel-panic-high-score",
     ...window.PARCEL_PANIC_CONFIG
@@ -106,6 +110,17 @@
     endedBy: "timer"
   };
 
+  const hudCache = {
+    timer: "",
+    score: "",
+    combo: "",
+    height: "",
+    heightWidth: "",
+    heightTop: "",
+    fallen: "",
+    warning: false
+  };
+
   function showOnly(screen) {
     [UI.start, UI.gameOver, UI.leaderboard].forEach((element) => element.classList.add("hidden"));
     if (screen) screen.classList.remove("hidden");
@@ -118,20 +133,52 @@
   }
 
   function updateHud() {
-    syncDangerSlots();
-    UI.timer.textContent = Math.max(0, Math.ceil(gameState.timeLeft)).toString();
-    UI.score.textContent = gameState.score.toLocaleString();
-    UI.combo.textContent = `x${getComboMultiplier()}`;
-    UI.heightText.textContent = Math.floor(gameState.currentHeight).toString();
-    UI.heightFill.style.width = `${Math.min(100, (gameState.currentHeight / CONFIG.maxHeightForMeter) * 100)}%`;
-    UI.heightSideValue.textContent = Math.floor(gameState.currentHeight).toString();
-    UI.heightSideBadge.classList.toggle("hidden", gameState.phase !== "playing" || gameState.currentHeight <= 0);
-    UI.heightSideBadge.style.top = `${Phaser.Math.Clamp(gameState.stackTopY, 150, window.innerHeight - 160)}px`;
-    UI.dangerLabel.textContent = `Dropped Parcels ${gameState.fallenParcels}/${CONFIG.collapseFallenLimit}`;
-    UI.dangerMeter.classList.toggle("warning", gameState.fallenParcels >= CONFIG.collapseFallenLimit - 1);
-    UI.dangerSlots.forEach((slot, index) => {
-      slot.classList.toggle("lost", index < gameState.fallenParcels);
-    });
+    const timer = Math.max(0, Math.ceil(gameState.timeLeft)).toString();
+    const score = gameState.score.toLocaleString();
+    const combo = `x${getComboMultiplier()}`;
+    const height = Math.floor(gameState.currentHeight).toString();
+    const heightWidth = `${Math.min(100, (gameState.currentHeight / CONFIG.maxHeightForMeter) * 100)}%`;
+    const heightTop = `${Phaser.Math.Clamp(gameState.stackTopY, 150, window.innerHeight - 160)}px`;
+    const fallen = `${gameState.fallenParcels}/${CONFIG.collapseFallenLimit}`;
+    const warning = gameState.fallenParcels >= CONFIG.collapseFallenLimit - 1;
+
+    if (hudCache.timer !== timer) {
+      hudCache.timer = timer;
+      UI.timer.textContent = timer;
+    }
+    if (hudCache.score !== score) {
+      hudCache.score = score;
+      UI.score.textContent = score;
+    }
+    if (hudCache.combo !== combo) {
+      hudCache.combo = combo;
+      UI.combo.textContent = combo;
+    }
+    if (hudCache.height !== height) {
+      hudCache.height = height;
+      UI.heightText.textContent = height;
+      UI.heightSideValue.textContent = height;
+      UI.heightSideBadge.classList.toggle("hidden", gameState.phase !== "playing" || gameState.currentHeight <= 0);
+    }
+    if (hudCache.heightWidth !== heightWidth) {
+      hudCache.heightWidth = heightWidth;
+      UI.heightFill.style.width = heightWidth;
+    }
+    if (hudCache.heightTop !== heightTop) {
+      hudCache.heightTop = heightTop;
+      UI.heightSideBadge.style.top = heightTop;
+    }
+    if (hudCache.fallen !== fallen) {
+      hudCache.fallen = fallen;
+      UI.dangerLabel.textContent = `Dropped Parcels ${fallen}`;
+      UI.dangerSlots.forEach((slot, index) => {
+        slot.classList.toggle("lost", index < gameState.fallenParcels);
+      });
+    }
+    if (hudCache.warning !== warning) {
+      hudCache.warning = warning;
+      UI.dangerMeter.classList.toggle("warning", warning);
+    }
   }
 
   function syncDangerSlots() {
@@ -143,6 +190,12 @@
     document.getElementById("danger-slots").innerHTML = slots.join("");
     document.getElementById("danger-slots").style.setProperty("--danger-slots", CONFIG.collapseFallenLimit);
     UI.dangerSlots = Array.from(document.querySelectorAll("#danger-slots span"));
+  }
+
+  function resetHudCache() {
+    Object.keys(hudCache).forEach((key) => {
+      hudCache[key] = key === "warning" ? null : "";
+    });
   }
 
   function toast(text) {
@@ -236,6 +289,10 @@
       this.lastSettledId = null;
       this.collapseWarningAt = 0;
       this.collapseFx = [];
+      this.nextHudAt = 0;
+      this.nextStackCheckAt = 0;
+      this.nextCleanupAt = 0;
+      this.frameSkip = 0;
     }
 
     preload() {}
@@ -277,7 +334,12 @@
       this.gameTime = 0;
       this.lastGoldenAt = -999;
       this.lastSettledId = null;
+      this.nextHudAt = 0;
+      this.nextStackCheckAt = 0;
+      this.nextCleanupAt = 0;
       this.cameras.main.setZoom(1);
+      syncDangerSlots();
+      resetHudCache();
       updateHud();
       this.spawnParcel();
       if (new URLSearchParams(window.location.search).has("autoplay")) {
@@ -294,6 +356,7 @@
     }
 
     cleanupRun() {
+      this.tweens.killAll();
       this.parcels.forEach((parcel) => parcel.destroy());
       this.parcels = [];
       this.collapseFx.forEach((effect) => effect.destroy());
@@ -359,8 +422,8 @@
 
       const dots = this.add.graphics();
       dots.fillStyle(0xffffff, 0.07);
-      for (let y = 18; y < this.scale.height; y += 18) {
-        for (let x = (y / 18) % 2 ? 8 : 0; x < this.scale.width; x += 18) {
+      for (let y = 18; y < this.scale.height; y += 28) {
+        for (let x = (y / 28) % 2 ? 10 : 0; x < this.scale.width; x += 28) {
           dots.fillCircle(x, y, 1.6);
         }
       }
@@ -440,9 +503,19 @@
       this.animateDropper(delta, 1);
       this.updateDifficulty();
       this.updateCurrentParcel();
-      this.updateStackStats();
-      this.checkCollapse();
-      updateHud();
+      if (time >= this.nextStackCheckAt) {
+        this.nextStackCheckAt = time + CONFIG.stackUpdateMs;
+        this.updateStackStats();
+        this.checkCollapse();
+      }
+      if (time >= this.nextCleanupAt) {
+        this.nextCleanupAt = time + CONFIG.cleanupMs;
+        this.pruneParcels();
+      }
+      if (time >= this.nextHudAt) {
+        this.nextHudAt = time + CONFIG.hudUpdateMs;
+        updateHud();
+      }
 
       if (gameState.timeLeft <= 0) {
         this.endRun("timer");
@@ -504,7 +577,8 @@
         friction: type.friction,
         frictionAir: 0.026,
         restitution: type.restitution,
-        density: type.density
+        density: type.density,
+        sleepThreshold: 45
       });
       body.setDepth(type.golden ? 16 : 15);
       body.setData("typeKey", key);
@@ -517,13 +591,13 @@
       body.setAngularVelocity(0);
       if (type.golden) {
         body.setTint(0xfff2a8);
-        this.tweens.add({
+        body.setData("glowTween", this.tweens.add({
           targets: body,
           alpha: 0.72,
           duration: 180,
           yoyo: true,
           repeat: -1
-        });
+        }));
       }
       this.currentParcel = body;
     }
@@ -534,6 +608,12 @@
 
       const parcel = this.currentParcel;
       const type = PARCEL_TYPES[parcel.getData("typeKey")];
+      const glowTween = parcel.getData("glowTween");
+      if (glowTween) {
+        glowTween.stop();
+        parcel.setAlpha(1);
+        parcel.setData("glowTween", null);
+      }
       this.applyAlignmentAssist(parcel);
       parcel.dropped = true;
       parcel.setIgnoreGravity(false);
@@ -546,6 +626,38 @@
       this.playTone(type.golden ? 720 : 420, 0.055, "square", 0.05);
       this.time.delayedCall(820, () => this.evaluateDrop(parcel));
       this.time.delayedCall(250, () => this.spawnParcel());
+    }
+
+    pruneParcels() {
+      const removable = [];
+      this.parcels.forEach((parcel) => {
+        if (!parcel.body) {
+          removable.push(parcel);
+          return;
+        }
+        const farOffscreen = parcel.y > this.safeZone.bottom + 220 || parcel.x < -220 || parcel.x > this.scale.width + 220;
+        if (parcel.getData("lost") || farOffscreen) removable.push(parcel);
+      });
+
+      while (this.parcels.length - removable.length > CONFIG.maxActiveParcels) {
+        const candidate = this.parcels.find((parcel) => (
+          parcel.body &&
+          parcel.dropped &&
+          parcel.y > this.platformZone.top - 20 &&
+          !removable.includes(parcel)
+        ));
+        if (!candidate) break;
+        removable.push(candidate);
+      }
+
+      removable.forEach((parcel) => {
+        const tween = parcel.getData && parcel.getData("glowTween");
+        if (tween) tween.stop();
+        parcel.destroy();
+      });
+      if (removable.length) {
+        this.parcels = this.parcels.filter((parcel) => parcel.active);
+      }
     }
 
     applyAlignmentAssist(parcel) {
@@ -982,6 +1094,7 @@
       type: Phaser.AUTO,
       parent: "game-container",
       backgroundColor: "#111827",
+      resolution: 1,
       scale: {
         mode: Phaser.Scale.RESIZE,
         parent: "game-container",
@@ -992,11 +1105,14 @@
         default: "matter",
         matter: {
           debug: false,
-          enableSleeping: false
+          enableSleeping: true,
+          positionIterations: 4,
+          velocityIterations: 3,
+          constraintIterations: 2
         }
       },
       render: {
-        antialias: true,
+        antialias: false,
         pixelArt: false,
         roundPixels: false
       },
